@@ -65,3 +65,5 @@ It does not install anything into your project and it does not need a Stylelint 
 ## License
 
 MIT.
+
+The comment is posted once per pull request and updated in place on every later push, so the thread never fills with stale reports.
