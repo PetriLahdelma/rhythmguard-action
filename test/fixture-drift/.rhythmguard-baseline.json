@@ -1,11 +1,11 @@
 {
-  "createdAt": "2026-09-17T20:46:46.888Z",
-  "directory": "src",
+  "createdAt": "2026-09-17T20:48:25.716Z",
+  "directory": "test/fixture-drift/src",
   "findings": [
     {
       "column": 12,
-      "file": "src/card.css",
-      "key": "rhythmguard/use-scale\u001foff-scale\u001fsrc/card.css\u001fpadding\u001f13px\u001f0",
+      "file": "test/fixture-drift/src/card.css",
+      "key": "rhythmguard/use-scale\u001foff-scale\u001ftest/fixture-drift/src/card.css\u001fpadding\u001f13px\u001f0",
       "line": 10,
       "property": "padding",
       "rule": "rhythmguard/use-scale",
@@ -15,8 +15,8 @@
     },
     {
       "column": 12,
-      "file": "src/card.css",
-      "key": "rhythmguard/prefer-token\u001ftoken-opportunity\u001fsrc/card.css\u001fpadding\u001f13px\u001f0",
+      "file": "test/fixture-drift/src/card.css",
+      "key": "rhythmguard/prefer-token\u001ftoken-opportunity\u001ftest/fixture-drift/src/card.css\u001fpadding\u001f13px\u001f0",
       "line": 10,
       "property": "padding",
       "rule": "rhythmguard/prefer-token",
@@ -26,8 +26,8 @@
     },
     {
       "column": 48,
-      "file": "src/Button.tsx",
-      "key": "rhythmguard-tailwind/tailwind-class-use-scale\u001ftailwind-arbitrary-spacing\u001fsrc/Button.tsx\u001fp-[13px]\u001f13px\u001f0",
+      "file": "test/fixture-drift/src/Button.tsx",
+      "key": "rhythmguard-tailwind/tailwind-class-use-scale\u001ftailwind-arbitrary-spacing\u001ftest/fixture-drift/src/Button.tsx\u001fp-[13px]\u001f13px\u001f0",
       "line": 1,
       "rule": "rhythmguard-tailwind/tailwind-class-use-scale",
       "text": "Unexpected Tailwind arbitrary spacing value \"p-[13px]\". Use \"p-3\" (12px) or \"p-4\" (16px).",
