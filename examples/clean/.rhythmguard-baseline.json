@@ -1,11 +1,11 @@
 {
-  "createdAt": "2026-09-17T20:50:55.142Z",
-  "directory": "examples/fixture/src",
+  "createdAt": "2026-09-17T20:52:05.318Z",
+  "directory": "examples/clean/src",
   "findings": [
     {
       "column": 12,
-      "file": "examples/fixture/src/card.css",
-      "key": "rhythmguard/use-scale\u001foff-scale\u001fexamples/fixture/src/card.css\u001fpadding\u001f13px\u001f0",
+      "file": "examples/clean/src/card.css",
+      "key": "rhythmguard/use-scale\u001foff-scale\u001fexamples/clean/src/card.css\u001fpadding\u001f13px\u001f0",
       "line": 10,
       "property": "padding",
       "rule": "rhythmguard/use-scale",
@@ -15,8 +15,8 @@
     },
     {
       "column": 12,
-      "file": "examples/fixture/src/card.css",
-      "key": "rhythmguard/prefer-token\u001ftoken-opportunity\u001fexamples/fixture/src/card.css\u001fpadding\u001f13px\u001f0",
+      "file": "examples/clean/src/card.css",
+      "key": "rhythmguard/prefer-token\u001ftoken-opportunity\u001fexamples/clean/src/card.css\u001fpadding\u001f13px\u001f0",
       "line": 10,
       "property": "padding",
       "rule": "rhythmguard/prefer-token",
@@ -26,8 +26,8 @@
     },
     {
       "column": 48,
-      "file": "examples/fixture/src/Button.tsx",
-      "key": "rhythmguard-tailwind/tailwind-class-use-scale\u001ftailwind-arbitrary-spacing\u001fexamples/fixture/src/Button.tsx\u001fp-[13px]\u001f13px\u001f0",
+      "file": "examples/clean/src/Button.tsx",
+      "key": "rhythmguard-tailwind/tailwind-class-use-scale\u001ftailwind-arbitrary-spacing\u001fexamples/clean/src/Button.tsx\u001fp-[13px]\u001f13px\u001f0",
       "line": 1,
       "rule": "rhythmguard-tailwind/tailwind-class-use-scale",
       "text": "Unexpected Tailwind arbitrary spacing value \"p-[13px]\". Use \"p-3\" (12px) or \"p-4\" (16px).",

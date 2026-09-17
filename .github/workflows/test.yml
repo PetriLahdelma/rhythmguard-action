@@ -18,16 +18,16 @@ jobs:
       - id: audit
         uses: ./
         with:
-          directory: test/fixture/src
-          baseline: test/fixture/.rhythmguard-baseline.json
-          badge: test/out/badge.json
+          directory: examples/clean/src
+          baseline: examples/clean/.rhythmguard-baseline.json
+          badge: examples/out/badge.json
       - name: Check outputs
         run: |
           test "${{ steps.audit.outputs.findings }}" = "3"
           test "${{ steps.audit.outputs.new-findings }}" = "0"
           test "${{ steps.audit.outputs.scale-source }}" = "scanned-css"
           test "${{ steps.audit.outputs.scale }}" = "0,4,8,12,16,24"
-          grep -q '"label": "spacing drift"' test/out/badge.json
+          grep -q '"label": "spacing drift"' examples/out/badge.json
 
   fails-on-new-drift:
     runs-on: ubuntu-latest
@@ -37,10 +37,10 @@ jobs:
         continue-on-error: true
         uses: ./
         with:
-          directory: test/fixture-drift/src
-          baseline: test/fixture-drift/.rhythmguard-baseline.json
+          directory: examples/drifted/src
+          baseline: examples/drifted/.rhythmguard-baseline.json
           comment: "false"
-      - name: The step must have failed with one new finding
+      - name: The step must have failed with the two findings of one new value
         run: |
           test "${{ steps.audit.outcome }}" = "failure"
-          test "${{ steps.audit.outputs.new-findings }}" = "1"
+          test "${{ steps.audit.outputs.new-findings }}" = "2"
