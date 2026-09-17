@@ -1,0 +1,46 @@
+name: Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  passes-against-its-baseline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - id: audit
+        uses: ./
+        with:
+          directory: test/fixture/src
+          baseline: test/fixture/.rhythmguard-baseline.json
+          badge: test/out/badge.json
+      - name: Check outputs
+        run: |
+          test "${{ steps.audit.outputs.findings }}" = "3"
+          test "${{ steps.audit.outputs.new-findings }}" = "0"
+          test "${{ steps.audit.outputs.scale-source }}" = "scanned-css"
+          test "${{ steps.audit.outputs.scale }}" = "0,4,8,12,16,24"
+          grep -q '"label": "spacing drift"' test/out/badge.json
+
+  fails-on-new-drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - id: audit
+        continue-on-error: true
+        uses: ./
+        with:
+          directory: test/fixture-drift/src
+          baseline: test/fixture-drift/.rhythmguard-baseline.json
+          comment: "false"
+      - name: The step must have failed with one new finding
+        run: |
+          test "${{ steps.audit.outcome }}" = "failure"
+          test "${{ steps.audit.outputs.new-findings }}" = "1"

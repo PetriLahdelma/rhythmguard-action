@@ -1,0 +1,161 @@
+name: Rhythmguard Audit
+description: Measure off-scale spacing in CSS, SCSS and Tailwind class strings, annotate the diff, comment the summary on the pull request, and fail on new drift against a baseline.
+author: Petri Lahdelma
+branding:
+  icon: align-left
+  color: blue
+
+inputs:
+  directory:
+    description: Directory to audit.
+    required: false
+    default: .
+  scale:
+    description: Comma-separated scale values, or "auto" to infer the scale from the project's own tokens.
+    required: false
+    default: auto
+  baseline:
+    description: "Path of a committed baseline written by rhythmguard audit --write-baseline. When the file exists, findings are compared against it and the run fails on new drift."
+    required: false
+    default: .rhythmguard-baseline.json
+  fail-on-new-drift:
+    description: Fail the job when the baseline comparison finds new drift. Ignored when the baseline file is absent.
+    required: false
+    default: "true"
+  max-findings:
+    description: Fail the job when total findings exceed this number. Empty means no limit.
+    required: false
+    default: ""
+  min-cleanliness:
+    description: Fail the job when scale cleanliness is below this percent. Empty means no floor.
+    required: false
+    default: ""
+  comment:
+    description: "Post the Markdown report as a pull-request comment, updated in place on later runs. Needs the pull-requests write permission."
+    required: false
+    default: "true"
+  badge:
+    description: Path to write a shields.io endpoint document to (see the README for serving it). Empty means none.
+    required: false
+    default: ""
+  version:
+    description: stylelint-plugin-rhythmguard version to run.
+    required: false
+    default: latest
+  github-token:
+    description: Token used to post the comment.
+    required: false
+    default: ${{ github.token }}
+
+outputs:
+  findings:
+    description: Total findings.
+    value: ${{ steps.audit.outputs.findings }}
+  cleanliness:
+    description: Scale cleanliness, percent.
+    value: ${{ steps.audit.outputs.cleanliness }}
+  scale:
+    description: The scale the audit used, comma-separated.
+    value: ${{ steps.audit.outputs.scale }}
+  scale-source:
+    description: "Where the scale came from: explicit, token-source, scanned-css, token-package or fallback."
+    value: ${{ steps.audit.outputs.scale_source }}
+  new-findings:
+    description: Findings not in the baseline. Empty when no baseline was compared.
+    value: ${{ steps.audit.outputs.new_findings }}
+  resolved-findings:
+    description: Baseline findings that are gone. Empty when no baseline was compared.
+    value: ${{ steps.audit.outputs.resolved_findings }}
+  report:
+    description: Path of the JSON report.
+    value: ${{ steps.audit.outputs.report }}
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 22
+
+    - name: Audit
+      id: audit
+      shell: bash
+      env:
+        INPUT_DIRECTORY: ${{ inputs.directory }}
+        INPUT_SCALE: ${{ inputs.scale }}
+        INPUT_BASELINE: ${{ inputs.baseline }}
+        INPUT_FAIL_ON_NEW_DRIFT: ${{ inputs.fail-on-new-drift }}
+        INPUT_MAX_FINDINGS: ${{ inputs.max-findings }}
+        INPUT_MIN_CLEANLINESS: ${{ inputs.min-cleanliness }}
+        INPUT_BADGE: ${{ inputs.badge }}
+        INPUT_VERSION: ${{ inputs.version }}
+      run: |
+        set -uo pipefail
+        out="${RUNNER_TEMP}/rhythmguard"
+        mkdir -p "$out"
+        pkg="stylelint-plugin-rhythmguard@${INPUT_VERSION}"
+        common=(audit "$INPUT_DIRECTORY" --scale "$INPUT_SCALE")
+        gate=()
+        if [ -n "$INPUT_BASELINE" ] && [ -f "$INPUT_BASELINE" ]; then
+          common+=(--since-baseline "$INPUT_BASELINE")
+          if [ "$INPUT_FAIL_ON_NEW_DRIFT" = "true" ]; then gate+=(--fail-on-new-drift); fi
+        fi
+        if [ -n "$INPUT_MAX_FINDINGS" ]; then gate+=(--max-findings "$INPUT_MAX_FINDINGS"); fi
+        if [ -n "$INPUT_MIN_CLEANLINESS" ]; then gate+=(--min-cleanliness "$INPUT_MIN_CLEANLINESS"); fi
+
+        # Three quick runs: annotations on the diff, JSON for outputs, Markdown for the comment.
+        # The gate flags go on the annotations run so its exit code is the job's verdict.
+        npx --yes --package "$pkg" rhythmguard "${common[@]}" --format json > "$out/report.json"
+        npx --yes --package "$pkg" rhythmguard "${common[@]}" --format markdown > "$out/report.md"
+        if [ -n "$INPUT_BADGE" ]; then
+          mkdir -p "$(dirname "$INPUT_BADGE")"
+          npx --yes --package "$pkg" rhythmguard "${common[@]}" --format badge > "$INPUT_BADGE"
+        fi
+
+        node -e '
+          const r = require(process.argv[1]);
+          const line = (k, v) => require("fs").appendFileSync(process.env.GITHUB_OUTPUT, `${k}=${v ?? ""}\n`);
+          line("findings", r.summary.totalFindings);
+          line("cleanliness", r.summary.scaleCleanliness);
+          line("scale", (r.contracts.scale.values || []).join(","));
+          line("scale_source", r.contracts.scale.source);
+          line("new_findings", r.baseline ? r.baseline.newFindingsCount : "");
+          line("resolved_findings", r.baseline ? r.baseline.resolvedFindingsCount : "");
+        ' "$out/report.json"
+        echo "report=$out/report.json" >> "$GITHUB_OUTPUT"
+        echo "markdown=$out/report.md" >> "$GITHUB_OUTPUT"
+
+        set +e
+        npx --yes --package "$pkg" rhythmguard "${common[@]}" "${gate[@]}" --format github
+        status=$?
+        set -e
+        echo "status=$status" >> "$GITHUB_OUTPUT"
+        cat "$out/report.md" >> "$GITHUB_STEP_SUMMARY"
+        exit 0
+
+    - name: Comment on the pull request
+      if: inputs.comment == 'true' && github.event_name == 'pull_request'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        MARKDOWN: ${{ steps.audit.outputs.markdown }}
+        PR: ${{ github.event.pull_request.number }}
+        REPO: ${{ github.repository }}
+      run: |
+        set -euo pipefail
+        marker="<!-- rhythmguard-audit -->"
+        body="$(printf '%s\n%s\n' "$marker" "$(cat "$MARKDOWN")")"
+        existing="$(gh api "repos/$REPO/issues/$PR/comments" --paginate --jq ".[] | select(.body | startswith(\"$marker\")) | .id" | head -1 || true)"
+        if [ -n "$existing" ]; then
+          gh api -X PATCH "repos/$REPO/issues/comments/$existing" -f body="$body" >/dev/null
+        else
+          gh api "repos/$REPO/issues/$PR/comments" -f body="$body" >/dev/null
+        fi
+
+    - name: Verdict
+      if: steps.audit.outputs.status != '0'
+      shell: bash
+      run: |
+        echo "::error::rhythmguard audit failed its gate (exit ${{ steps.audit.outputs.status }}); see the annotations and the job summary."
+        exit ${{ steps.audit.outputs.status }}
