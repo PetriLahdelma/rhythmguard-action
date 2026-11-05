@@ -5,6 +5,10 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+  # Daily, against the newest 3.x on npm: a release that breaks the action shows
+  # here within a day (3.16.0 to 3.18.0 broke it for two weeks, unnoticed).
+  schedule:
+    - cron: '23 6 * * *'
 
 permissions:
   contents: read
@@ -14,7 +18,7 @@ jobs:
   passes-against-its-baseline:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - id: audit
         uses: ./
         with:
@@ -32,7 +36,7 @@ jobs:
   fails-on-new-drift:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - id: audit
         continue-on-error: true
         uses: ./
@@ -44,3 +48,20 @@ jobs:
         run: |
           test "${{ steps.audit.outcome }}" = "failure"
           test "${{ steps.audit.outputs.new-findings }}" = "2"
+
+  fails-when-a-required-baseline-is-missing:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - id: audit
+        continue-on-error: true
+        uses: ./
+        with:
+          directory: examples/clean/src
+          baseline: examples/clean/no-such-baseline.json
+          require-baseline: "true"
+          comment: "false"
+      - name: The step must have failed before auditing
+        run: |
+          test "${{ steps.audit.outcome }}" = "failure"
+          test -z "${{ steps.audit.outputs.findings }}"

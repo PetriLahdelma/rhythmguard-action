@@ -12,7 +12,7 @@ jobs:
   spacing:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: PetriLahdelma/rhythmguard-action@v1
         with:
           directory: src
@@ -25,11 +25,11 @@ That is enough for a first run: the scale is inferred from your own tokens (`--s
 Legacy codebases have drift. Write a baseline once, commit it, and the action fails only when a change adds a finding that is not in it:
 
 ```bash
-npx stylelint-plugin-rhythmguard audit src --scale auto --write-baseline
+npx rhythmguard audit src --scale auto --write-baseline
 git add .rhythmguard-baseline.json
 ```
 
-With the file present at the default path the action compares against it and fails on new drift. Every report leads with `Since baseline: N resolved, M new`. Baselines key findings by content, not by line, so moving code does not produce noise.
+With the file present at the default path the action compares against it and fails on new drift. Once it is committed, set `require-baseline: true`, so that deleting or renaming the file fails the job instead of quietly switching the comparison off. Every report leads with `Since baseline: N resolved, M new`. Baselines key findings by content, not by line, so moving code does not produce noise.
 
 ## Inputs
 
@@ -38,12 +38,13 @@ With the file present at the default path the action compares against it and fai
 | `directory` | `.` | Directory to audit |
 | `scale` | `auto` | Comma-separated values, or `auto` to infer from the project's tokens |
 | `baseline` | `.rhythmguard-baseline.json` | Baseline to compare against when the file exists |
+| `require-baseline` | `false` | Fail when the baseline file is absent, instead of running without the comparison |
 | `fail-on-new-drift` | `true` | Fail when the comparison finds new drift |
 | `max-findings` | | Fail when total findings exceed this number |
 | `min-cleanliness` | | Fail when scale cleanliness is below this percent |
 | `comment` | `true` | Post and update the pull-request comment (needs `pull-requests: write`) |
 | `badge` | | Write a shields.io endpoint document to this path |
-| `version` | `latest` | `stylelint-plugin-rhythmguard` version to run |
+| `version` | `^3` | Version or range of the [`rhythmguard`](https://www.npmjs.com/package/rhythmguard) CLI package to run; it brings Stylelint and postcss-scss. The default stays on 3.x |
 | `github-token` | `${{ github.token }}` | Token for the comment |
 
 ## Outputs
