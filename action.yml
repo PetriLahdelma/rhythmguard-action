@@ -18,8 +18,12 @@ inputs:
     description: "Path of a committed baseline written by rhythmguard audit --write-baseline. When the file exists, findings are compared against it and the run fails on new drift."
     required: false
     default: .rhythmguard-baseline.json
+  require-baseline:
+    description: Fail the job when the baseline file is absent, instead of running without the comparison. Set it once the baseline is committed, so a deleted or renamed baseline cannot turn the gate off without a word.
+    required: false
+    default: "false"
   fail-on-new-drift:
-    description: Fail the job when the baseline comparison finds new drift. Ignored when the baseline file is absent.
+    description: Fail the job when the baseline comparison finds new drift. Ignored when the baseline file is absent and require-baseline is false.
     required: false
     default: "true"
   max-findings:
@@ -39,9 +43,9 @@ inputs:
     required: false
     default: ""
   version:
-    description: stylelint-plugin-rhythmguard version to run.
+    description: Version (or range) of the rhythmguard CLI package to run. It brings Stylelint and postcss-scss with it. The default stays on 3.x, so a new major arrives only when you change it.
     required: false
-    default: latest
+    default: "^3"
   github-token:
     description: Token used to post the comment.
     required: false
@@ -74,7 +78,7 @@ runs:
   using: composite
   steps:
     - name: Set up Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
       with:
         node-version: 22
 
@@ -85,6 +89,7 @@ runs:
         INPUT_DIRECTORY: ${{ inputs.directory }}
         INPUT_SCALE: ${{ inputs.scale }}
         INPUT_BASELINE: ${{ inputs.baseline }}
+        INPUT_REQUIRE_BASELINE: ${{ inputs.require-baseline }}
         INPUT_FAIL_ON_NEW_DRIFT: ${{ inputs.fail-on-new-drift }}
         INPUT_MAX_FINDINGS: ${{ inputs.max-findings }}
         INPUT_MIN_CLEANLINESS: ${{ inputs.min-cleanliness }}
@@ -94,9 +99,17 @@ runs:
         set -uo pipefail
         out="${RUNNER_TEMP}/rhythmguard"
         mkdir -p "$out"
-        pkg="stylelint-plugin-rhythmguard@${INPUT_VERSION}"
+        # The rhythmguard package, not stylelint-plugin-rhythmguard: since 3.16.0
+        # Stylelint is an optional peer of the plugin, so npx installed the
+        # plugin alone and the audit could not read any stylesheet.
+        pkg="rhythmguard@${INPUT_VERSION}"
         common=(audit "$INPUT_DIRECTORY" --scale "$INPUT_SCALE")
         gate=()
+        if [ "$INPUT_REQUIRE_BASELINE" = "true" ] && { [ -z "$INPUT_BASELINE" ] || [ ! -f "$INPUT_BASELINE" ]; }; then
+          echo "::error::The baseline ${INPUT_BASELINE:-(none)} does not exist and require-baseline is true. Write it with: npx rhythmguard audit ${INPUT_DIRECTORY} --scale ${INPUT_SCALE} --write-baseline ${INPUT_BASELINE}"
+          echo "status=2" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
         if [ -n "$INPUT_BASELINE" ] && [ -f "$INPUT_BASELINE" ]; then
           common+=(--since-baseline "$INPUT_BASELINE")
           if [ "$INPUT_FAIL_ON_NEW_DRIFT" = "true" ]; then gate+=(--fail-on-new-drift); fi
@@ -135,7 +148,7 @@ runs:
         exit 0
 
     - name: Comment on the pull request
-      if: inputs.comment == 'true' && github.event_name == 'pull_request'
+      if: inputs.comment == 'true' && github.event_name == 'pull_request' && steps.audit.outputs.markdown != ''
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.github-token }}
@@ -157,5 +170,5 @@ runs:
       if: steps.audit.outputs.status != '0'
       shell: bash
       run: |
-        echo "::error::rhythmguard audit failed its gate (exit ${{ steps.audit.outputs.status }}); see the annotations and the job summary."
+        echo "::error::rhythmguard audit failed (exit ${{ steps.audit.outputs.status }}: 1 is a failed gate, 2 a configuration error); see the annotations and the job summary."
         exit ${{ steps.audit.outputs.status }}
