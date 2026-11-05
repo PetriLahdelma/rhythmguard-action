@@ -1,5 +1,5 @@
 name: Rhythmguard Audit
-description: Measure off-scale spacing in CSS, SCSS and Tailwind class strings, annotate the diff, comment the summary on the pull request, and fail on new drift against a baseline.
+description: Check CSS, SCSS and Tailwind spacing against your scale, annotate the diff, and fail on new drift against a baseline.
 author: Petri Lahdelma
 branding:
   icon: align-left
